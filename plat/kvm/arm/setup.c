@@ -33,6 +33,9 @@
 #include <uk/intctlr.h>
 #include <uk/arch/limits.h>
 #include <uk/arch/util.h>
+#if CONFIG_LIBUKRSI
+#include <uk/rsi.h>
+#endif /* CONFIG_LIBUKRSI */
 
 #if CONFIG_ENFORCE_W_XOR_X && CONFIG_LIBUKPAGING
 #include <uk/plat/common/w_xor_x.h>
@@ -60,6 +63,12 @@ void __no_pauth _ukplat_entry(void)
 		UK_CRASH("Could not retrieve bootinfo\n");
 
 	uk_boot_early_init(bi);
+
+#if CONFIG_LIBUKRSI
+	rc = uk_rsi_init_memory();
+	if (unlikely(rc))
+		UK_CRASH("Could not initialize memory for CCA\n");
+#endif /* CONFIG_LIBUKRSI */
 
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,

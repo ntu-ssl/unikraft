@@ -51,6 +51,15 @@ __pte_t uk_plat_native_pte_create(__paddr_t paddr, unsigned long attr,
 	if (!(attr & UK_PLAT_NATIVE_PAGE_ATTR_PROT_EXEC))
 		pte |= UK_ARCH_ARM64_PTE_ATTR_XN;
 
+#if CONFIG_LIBUKRSI
+	if (attr & UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED)
+		pte |= PTE_RME_UNPROTECTED_BIT;
+	else
+		pte &= (~PTE_RME_UNPROTECTED_BIT);
+#else  /* !CONFIG_LIBUKRSI */
+	UK_ASSERT(!(attr & UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED));
+#endif /* !CONFIG_LIBUKRSI */
+
 	switch (attr & UK_ARCH_ARM64_PTE_ATTR_SH_MASK) {
 	case UK_ARCH_ARM64_PTE_ATTR_SH(UK_ARCH_ARM64_PTE_ATTR_SH_IS):
 		pte |= UK_ARCH_ARM64_PTE_ATTR_SH(UK_ARCH_ARM64_PTE_ATTR_SH_IS);
@@ -114,6 +123,11 @@ unsigned long uk_plat_native_attr_from_pte(__pte_t pte,
 
 	if (!(pte & UK_ARCH_ARM64_PTE_ATTR_PXN))
 		attr |= UK_PLAT_NATIVE_PAGE_ATTR_PROT_EXEC;
+
+#if CONFIG_LIBUKRSI
+	if (pte & PTE_RME_UNPROTECTED_BIT)
+		attr |= UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED;
+#endif /* !CONFIG_LIBUKRSI */
 
 	switch (pte & UK_ARCH_ARM64_PTE_ATTR_SH_MASK) {
 	case (UK_ARCH_ARM64_PTE_ATTR_SH(UK_ARCH_ARM64_PTE_ATTR_SH_NS)):

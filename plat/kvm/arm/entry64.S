@@ -37,7 +37,11 @@
 #include <uk/config.h>
 #include <uk/reloc.h>
 
+#if CONFIG_LIBUKRSI
+#define BOOTSTACK_SIZE	16384
+#else /* !CONFIG_LIBUKRSI */
 #define BOOTSTACK_SIZE	4096
+#endif /* CONFIG_LIBUKRSI */
 
 /* Prefer using in-image stack, to avoid conflicts when unmapping is done by
  * paging_init (it invalidates our stack)
@@ -132,6 +136,10 @@ ENTRY(_libkvmplat_entry)
 	/* Set TPIDR_EL1 for BSP (idx=0): base + 0 * size = base */
 	ur_addr	x1, _uk_pcpuvar_base
 	msr	tpidr_el1, x1
+
+#if CONFIG_LIBUKRSI
+	bl uk_rsi_init
+#endif /* CONFIG_LIBUKRSI */
 
 	/* Jump to early init */
 #if defined(CONFIG_KVM_BOOT_PROTO_LXBOOT)
