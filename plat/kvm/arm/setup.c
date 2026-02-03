@@ -48,6 +48,7 @@
 
 #if CONFIG_LIBUKARM_CCA_GUEST
 #include <uk/arm_cca_guest.h>
+#include <kvm-arm64/image.h>
 #endif /* CONFIG_LIBUKARM_CCA_GUEST */
 
 /* At this point we expect that the C runtime is configured and that
@@ -62,6 +63,16 @@ void __no_pauth _ukplat_entry(void)
 	bi = ukplat_bootinfo_get();
 	if (unlikely(!bi))
 		UK_CRASH("Could not retrieve bootinfo\n");
+
+#if CONFIG_LIBUKARM_CCA_GUEST
+	/* CCA only exposes faults to the hypervisor from the unprotected IPA
+	 * space, so device regions need to be mapped there. Before paging is
+	 * initialised, we need to map the entire device region to have early
+	 * devices working. */
+	rc = arm_cca_early_map_unprotected(DEVICE_BASE_ADDR, DEVICE_LENGTH);
+	if (unlikely(rc))
+		UK_CRASH("failed to map early device memory as unprotected\n");
+#endif /* CONFIG_LIBUKARM_CCA_GUEST */
 
 	uk_boot_early_init(bi);
 
@@ -86,6 +97,12 @@ void __no_pauth _ukplat_entry(void)
 	rc = ukplat_mem_init();
 	if (unlikely(rc))
 		UK_CRASH("Could not initialize paging (%d)\n", rc);
+
+#if CONFIG_LIBUKARM_CCA_GUEST
+	/* Now that paging is initialised, we need to map the devices to the
+	 * unprotected IPA space again. */
+	arm_cca_map_unprotected_rw(DEVICE_BASE_ADDR, DEVICE_LENGTH);
+#endif /* CONFIG_LIBUKARM_CCA_GUEST */
 
 #if CONFIG_ENFORCE_W_XOR_X && CONFIG_LIBUKPAGING
 	enforce_w_xor_x();

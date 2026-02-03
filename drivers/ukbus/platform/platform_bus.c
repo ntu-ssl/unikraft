@@ -250,6 +250,10 @@ __vaddr_t uk_bus_pf_devmap(__paddr_t base, __sz size)
 	attr |= UK_PLAT_NATIVE_PAGE_ATTR_TYPE_DEVICE_nGnRnE;
 #endif /* CONFIG_ARCH_ARM_64 */
 
+#if CONFIG_LIBUKRSI
+	attr |= PAGE_ATTR_RME_UNPROTECTED;
+#endif /* CONFIG_LIBUKRSI */
+
 	pages = ALIGN_UP(size, __PAGE_SIZE) >> UK_PAGING_PAGE_SHIFT;
 
 	pt = uk_paging_pt_get_active();

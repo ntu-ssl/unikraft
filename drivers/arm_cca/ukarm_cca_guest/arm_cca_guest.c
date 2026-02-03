@@ -1,7 +1,60 @@
 #include <uk/arm_cca_guest.h>
+#include <uk/rsi.h>
 #include <uk/plat/common/bootinfo.h>
 #include <uk/plat/io.h>
 #include <uk/plat/paging.h>
+
+int arm_cca_early_map_unprotected(__u64 base, __sz size)
+{
+	__u64 end;
+	int rc;
+	unsigned long ttbr0;
+	int lvl;
+	__u64 idx;
+	unsigned long tbl_base;
+	unsigned long pg_addr;
+	__pte_t pte;
+
+	/* Base address is both virt and phys, as this should only be called
+	 * during early boot with identity page tables. */
+
+	UK_ASSERT(PAGE_ALIGNED(base));
+	UK_ASSERT(PAGE_ALIGNED(size));
+
+	end = base + size;
+
+	ttbr0 = (unsigned long)ukarch_pt_read_base();
+
+	for (pg_addr = base; pg_addr < end; pg_addr += PAGE_SIZE) {
+		tbl_base = ttbr0;
+		lvl = PT_LEVELS - 1;
+
+		/* Walk the page table */
+		while (1) {
+			idx = PT_Lx_IDX(pg_addr, lvl);
+			rc = ukarch_pte_read(tbl_base, lvl, idx, &pte);
+			if (unlikely(rc))
+				return rc;
+
+			/* Exit if this is a leaf */
+			if (PAGE_Lx_IS(pte, lvl))
+				break;
+
+			/* Extract address from upper bits of PTE */
+			tbl_base = pte & ~0xFFFULL;
+
+			lvl--;
+		}
+
+		rc = ukarch_pte_write(tbl_base, lvl, idx,
+				      pte | PTE_RME_UNPROTECTED_BIT);
+
+		if (unlikely(rc))
+			return rc;
+	}
+
+	return 0;
+}
 
 int __check_result arm_cca_init_memory(void)
 {
@@ -38,4 +91,18 @@ int __check_result arm_cca_init_memory(void)
 	}
 
 	return 0;
+}
+
+int arm_cca_map_unprotected_rw(__vaddr_t vaddr, __sz size)
+{
+	unsigned long pages, prot;
+
+	UK_ASSERT(PAGE_ALIGNED(vaddr));
+	UK_ASSERT(PAGE_ALIGNED(size));
+
+	pages = size / PAGE_SIZE;
+	prot = PAGE_ATTR_PROT_RW | PAGE_ATTR_RME_UNPROTECTED;
+
+	return ukplat_page_set_attr(ukplat_pt_get_active(), vaddr, pages, prot,
+				    0);
 }
