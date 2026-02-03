@@ -5,19 +5,8 @@
  */
 
 #include <arm/smccc.h>
-#include <errno.h>
-#include <uk/essentials.h>
-#include <uk/arch/paging.h>
-#include <uk/plat/io.h>
 #include <uk/plat/common/bootinfo.h>
-#include <uk/plat/common/sections.h>
 #include <uk/rsi.h>
-
-#ifdef CONFIG_PAGING
-#include <uk/arch/lcpu.h>
-#include <uk/plat/paging.h>
-#include <kvm-arm64/image.h>
-#endif
 
 rsi_return_t uk_rsi_unprotected_mask;
 rsi_return_t uk_rsi_attestation_token_continue(__paddr_t paddr, __u64 offset,
@@ -178,19 +167,16 @@ rsi_return_t uk_rsi_version(rsi_version_t req, rsi_version_t *lower,
 	return args.a0;
 }
 
-rsi_return_t uk_rsi_setup_memory(__paddr_t base, __paddr_t end, rsi_ripas_t ripas)
+void uk_rsi_init(void)
 {
-	__paddr_t new_base;
-	rsi_response_t ret;
+	struct rsi_realm_config config __align(PAGE_SIZE);
+	rsi_return_t ret = uk_rsi_realm_config(&config);
 
-	/* Iterate over the memory space to set RIPAS */
-	while (base != end) {
-		uk_rsi_ipa_state_set(base, end, ripas, 0, &new_base, &ret);
-		base = new_base;
-		if (ret != RSI_SUCCESS)
-			break;
-	}
-	return ret;
+	if (ret != RSI_SUCCESS)
+		UK_CRASH("Could not initialize RSI\n");
+
+	/* Set the mask of the unprotected bit */
+	uk_rsi_unprotected_mask = (1UL) << (config.ipa_width - 1);
 }
 
 rsi_return_t uk_rsi_generate_attestation_token(__paddr_t paddr,
@@ -224,130 +210,24 @@ rsi_return_t uk_rsi_generate_attestation_token(__paddr_t paddr,
 	return ret;
 }
 
-void uk_rsi_init(void)
+rsi_return_t uk_rsi_ipa_state_set_range(__paddr_t base, __paddr_t end,
+					rsi_ripas_t ripas,
+					rsi_ripas_change_flags_t flags)
 {
-	struct rsi_realm_config config __align(PAGE_SIZE);
-	__u64 ret = uk_rsi_realm_config(&config);
+	__paddr_t new_base, ret;
+	__u8 resp;
 
-	if (ret != RSI_SUCCESS)
-		UK_CRASH("Could not initialize RSI\n");
-
-	/* set the mask of the unprotected bit */
-	uk_rsi_unprotected_mask = (1UL) << (config.ipa_width - 1);
-}
-
-int uk_rsi_set_early_unprotected(__u64 base, __sz len, __u64 *new_base)
-{
-	struct ukplat_bootinfo *bi;
-	struct ukplat_memregion_desc mrd = {0};
-	__u64 aliased_IPA;
-	int rc;
-
-	bi = ukplat_bootinfo_get();
-	aliased_IPA = base | uk_rsi_unprotected_mask;
-
-	/* Add memory region for the unprotected IPA alias of early devices. */
-	mrd.vbase = (__vaddr_t)ALIGN_DOWN(aliased_IPA, __PAGE_SIZE);
-	mrd.pbase = (__paddr_t)ALIGN_DOWN(aliased_IPA, __PAGE_SIZE);
-	mrd.len   = ALIGN_UP(len, __PAGE_SIZE);
-	mrd.type  = UKPLAT_MEMRT_REALM;
-	mrd.flags = UKPLAT_MEMRF_READ | UKPLAT_MEMRF_WRITE;
-
-	rc = ukplat_memregion_list_insert(&bi->mrds, &mrd);
-	if (unlikely(rc < 0)) {
-		uk_pr_err("Failed to add memory region for early device\n");
-		return rc;
-	}
-
-	ukplat_memregion_list_coalesce(&bi->mrds);
-
-	*new_base = aliased_IPA;
-
-	return 0;
-}
-
-int __check_result uk_rsi_init_memory(void)
-{
-	struct ukplat_bootinfo *bi;
-	const struct ukplat_memregion_desc *mrd;
-	__paddr_t pstart, pend, len;
-	__u64 ret;
-	__u32 i;
-
-	bi = ukplat_bootinfo_get();
-
-	for (i = 0; i < bi->mrds.count; i++) {
-		mrd = &bi->mrds.mrds[i];
-
-		if (mrd->type == UKPLAT_MEMRT_REALM)
-			continue;
-
-		pstart = ALIGN_DOWN(mrd->pbase, __PAGE_SIZE);
-		len = ALIGN_UP(mrd->len, __PAGE_SIZE);
-		pend = pstart + len;
-
-		uk_pr_info("Setting up memory: 0x%lx - 0x%lx\n", pstart, pend);
-
-		ret = uk_rsi_setup_memory(pstart, pend, RSI_RIPAS_RAM);
+	/* Iterate over the memory space to set RIPAS */
+	while (base != end) {
+		ret = uk_rsi_ipa_state_set(base, end, ripas, flags, &new_base,
+					   &resp);
 		if (ret != RSI_SUCCESS)
-			return -ENOTSUP;
+			break;
+		if (resp == RSI_REJECT) {
+			ret = RSI_ERROR_INPUT;
+			break;
+		}
+		base = new_base;
 	}
-
-	return 0;
+	return ret;
 }
-
-#if CONFIG_PAGING
-int uk_rsi_init_device(__u64 base, __sz size)
-{
-	unsigned long pages, prot;
-
-	/* set up device memory region */
-	pages = DIV_ROUND_UP(size, PAGE_SIZE);
-	prot = PAGE_ATTR_PROT_RW | UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED;
-
-	return ukplat_page_set_attr(ukplat_pt_get_active(), base, pages, prot,
-				    0);
-}
-
-int uk_rsi_set_memory_protected(__u64 addr, unsigned long numpages)
-{
-	unsigned long prot, phys_addr;
-	__u64 ret;
-	int rc;
-
-	prot = PAGE_ATTR_PROT_RW;
-	rc = ukplat_page_set_attr(ukplat_pt_get_active(), addr, numpages, prot,
-				  0);
-	if (unlikely(rc))
-		return rc;
-
-	phys_addr = ukplat_virt_to_phys((void *)addr);
-	ret = uk_rsi_setup_memory(phys_addr, phys_addr + (numpages * PAGE_SIZE),
-				  RSI_RIPAS_RAM);
-	if (ret != RSI_SUCCESS)
-		return -ENOTSUP;
-
-	return 0;
-}
-
-int uk_rsi_set_memory_shared(__u64 addr, unsigned long numpages)
-{
-	unsigned long prot, phys_addr;
-	__u64 ret;
-	int rc;
-
-	phys_addr = ukplat_virt_to_phys((void *)addr);
-	rc = uk_rsi_setup_memory(phys_addr, phys_addr + (numpages * PAGE_SIZE),
-				 RSI_RIPAS_EMPTY);
-	if (unlikely(rc))
-		return rc;
-
-	prot = PAGE_ATTR_PROT_RW | UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED;
-	ret = ukplat_page_set_attr(ukplat_pt_get_active(), addr, numpages, prot,
-				   0);
-	if (ret != RSI_SUCCESS)
-		return -ENOTSUP;
-
-	return 0;
-}
-#endif /* CONFIG_PAGING */

@@ -93,9 +93,6 @@ void ukplat_bootinfo_print(void)
 		case UKPLAT_MEMRT_DEVICE:
 			type = "device ";
 			break;
-		case UKPLAT_MEMRT_REALM:
-			type = "realm";
-			break;
 		default:
 			type = "";
 			break;

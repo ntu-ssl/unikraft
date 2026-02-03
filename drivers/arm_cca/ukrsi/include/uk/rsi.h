@@ -157,16 +157,9 @@ rsi_return_t uk_rsi_version(rsi_version_t req, rsi_version_t *lower,
 			    rsi_version_t *higher);
 
 /**
- * Set the range of memory accessible by the realm. This function wraps up
- * calls to uk_rsi_ipa_state_set.
- *
- * @param base The base address of the memory range
- * @param end The end address of the memory range
- * @param ripas The RIPAS value
- *
- * @return Command return status
+ * Initialize the RSI interface.
  */
-__u64 uk_rsi_setup_memory(__u64 base, __u64 end, __u8 ripas);
+void uk_rsi_init(void);
 
 /**
  * Generate an attestation token. This function wraps up calls to
@@ -182,57 +175,17 @@ rsi_return_t uk_rsi_generate_attestation_token(__u64 addr, __u64 challenge[8],
 					       __u64 *size);
 
 /**
- * Initialize the RSI interface.
+ * Set the RIPAS on a range of memory. This function wraps up calls to
+ * uk_rsi_ipa_state_set.
+ *
+ * @param base The base address of the memory range
+ * @param end The end address of the memory range
+ * @param ripas The RIPAS value
+ *
+ * @return Command return status
  */
-void uk_rsi_init(void);
-
-/**
- * Allocate a memory region for early devices.
- *
- * @param base The base address of the device.
- * @param len The length of the device.
- * @param[out] new_base The new base address of the device.
- *
- * @return 0 on success, a non-zero error code otherwise
- */
-int uk_rsi_set_early_unprotected(__u64 base, __sz len, __u64 *new_base);
-
-/**
- * Setup memory for the realm
- *
- * @param bi Pointer to the image's `struct ukplat_bootinfo` structure.
- *
- * @return 0 on success, a non-zero error code otherwise
- */
-int __check_result uk_rsi_init_memory(void);
-
-#if CONFIG_PAGING
-/**
- * Setup the device region for the realm.
- *
- *  @return 0 on success, a non-zero error code otherwise
- */
-int uk_rsi_init_device(__u64 base, __sz size);
-
-/**
- * Set the memory region as protected.
- *
- * @param addr IPA of the region
- * @param numpages Number of pages
- *
- * @return 0 for success, other for failure
- */
-int uk_rsi_set_memory_protected(__u64 addr, unsigned long numpages);
-
-/**
- * Set the memory region as unprotected.
- *
- * @param addr IPA of the region
- * @param numpages Number of pages
- *
- * @return 0 on success, a non-zero error code otherwise
- */
-int uk_rsi_set_memory_shared(__u64 addr, unsigned long numpages);
-#endif /* CONFIG_PAGING */
+rsi_return_t uk_rsi_ipa_state_set_range(__paddr_t base, __paddr_t end,
+					rsi_ripas_t ripas,
+					rsi_ripas_change_flags_t flags);
 
 #endif /* __UK_RSI_H__ */

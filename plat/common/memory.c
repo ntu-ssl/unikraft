@@ -39,11 +39,6 @@
 #include <uk/alloc.h>
 #include <uk/paging.h>
 
-#if CONFIG_LIBUKRSI
-#include <uk/rsi.h>
-#include <kvm-arm64/image.h>
-#endif /* CONFIG_LIBUKRSI */
-
 extern struct ukplat_memregion_desc bpt_unmap_mrd;
 
 static struct uk_alloc *plat_allocator;
@@ -167,7 +162,6 @@ static inline int get_mrd_prio(struct ukplat_memregion_desc *const m)
 	case UKPLAT_MEMRT_KERNEL:
 		return MRD_PRIO_KRNL_RSRC;
 	case UKPLAT_MEMRT_RESERVED:
-	case UKPLAT_MEMRT_REALM:
 		return MRD_PRIO_RSVD;
 	default:
 		return -1;
@@ -480,18 +474,7 @@ int ukplat_memregion_get(int i, struct ukplat_memregion_desc **mrd)
 #ifdef CONFIG_LIBUKPAGING
 int ukplat_mem_init(void)
 {
-	int rc;
-
-	rc = uk_paging_init();
-
-	if (unlikely(rc < 0))
-		return rc;
-
-#if CONFIG_LIBUKRSI
-	rc = uk_rsi_init_device(DEVICE_BASE_ADDR, DEVICE_LENGTH);
-	if (unlikely(rc))
-		UK_CRASH("Failed to set up device memory region\n");
-#endif /* CONFIG_LIBUKRSI */
+	return uk_paging_init();
 }
 #else /* CONFIG_LIBUKPAGING */
 int ukplat_mem_init(void)

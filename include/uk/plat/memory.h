@@ -60,7 +60,6 @@ extern "C" {
 #define UKPLAT_MEMRT_DEVICETREE		0x0010	/* Device tree */
 #define UKPLAT_MEMRT_STACK		0x0020	/* Thread stack */
 #define UKPLAT_MEMRT_DEVICE		0x0040	/* Device region */
-#define UKPLAT_MEMRT_REALM		0x0080	/* Realm unprotected alias*/
 
 /* Memory region flags */
 #define UKPLAT_MEMRF_ALL		0xffff
