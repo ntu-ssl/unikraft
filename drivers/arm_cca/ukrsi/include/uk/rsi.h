@@ -65,18 +65,6 @@ rsi_return_t uk_rsi_attestation_token_continue(__paddr_t paddr, __u64 offset,
 					       __u64 size, __u64 *len);
 
 /**
- * Read feature register.
- * In the current version of the interface, this command returns zero regardless
- * of the index provided.
- *
- * @param index Feature register index
- * @param[out] value Feature register value
- *
- * @return Command return status
- */
-rsi_return_t uk_rsi_features(__u64 index, __u64 *value);
-
-/**
  * Initialize the operation to retrieve an attestation token.
  *
  * @param challenge Challenge value

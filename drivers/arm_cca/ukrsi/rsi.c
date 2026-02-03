@@ -56,19 +56,6 @@ rsi_return_t uk_rsi_attestation_token_init(__u64 challenge[8], __u64 *size)
 	return args.a0;
 }
 
-__u64 uk_rsi_features(__u64 index, __u64 *value)
-{
-	struct smccc_args args = {0};
-
-	args.a0 = RSI_CMD_FEATURES;
-	args.a1 = index;
-
-	smccc_invoke(&args);
-	*value = args.a1;
-
-	return args.a0;
-}
-
 rsi_return_t uk_rsi_host_call(__paddr_t paddr)
 {
 	struct smccc_args args = {0};
