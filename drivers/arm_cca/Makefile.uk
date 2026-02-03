@@ -7,3 +7,4 @@
 UK_DRIV_CCA_BASE := $(UK_DRIV_BASE)/arm_cca
 
 $(eval $(call import_lib,$(UK_DRIV_CCA_BASE)/ukrsi))
+$(eval $(call import_lib,$(UK_DRIV_CCA_BASE)/ukarm_cca_guest))

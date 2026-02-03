@@ -1,12 +1,14 @@
-menuconfig LIBUKRSI
-	bool "ukrsi: Realm Services Interface library"
-	depends on ARM64_FEAT_RME
+comment "Arm CCA support requires PAGING"
+    depends on !PAGING
+
+config LIBUKRSI
+	bool "Realm Services Interface library"
+	depends on ARCH_ARM_64
 	help
-		Realm Services Interface (RSI) support. Enable if you are planning to run Unikraft as a CCA Realm.
+		Realm Services Interface (RSI) support.
 
 if LIBUKRSI
-
 config LIBUKRSI_TEST
-	bool "Enable tests"
+	bool "Enable integration tests for RSI"
 	select LIBUKTEST
 endif

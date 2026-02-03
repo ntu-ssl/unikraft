@@ -1,0 +1,13 @@
+config LIBUKARM_CCA_GUEST
+	bool "Arm CCA guest"
+	depends on LIBUKRSI
+	depends on PLAT_KVM
+	select LIBUKPAGING
+	help
+		Support for running in an Arm CCA realm.
+
+if LIBUKARM_CCA_GUEST
+config LIBUKARM_CCA_GUEST_TEST
+	bool "Enable tests for CCA guest features"
+	select LIBUKTEST
+endif

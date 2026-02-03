@@ -1,0 +1,3 @@
+arm_cca_early_map_unprotected
+arm_cca_init_memory
+arm_cca_map_unprotected_rw

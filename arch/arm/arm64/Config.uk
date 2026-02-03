@@ -202,33 +202,6 @@ config ARM64_FEAT_MTE_TCF_ASYMMETRIC
 endchoice
 endif
 
-config ARM64_FEAT_RNG
-	bool "Armv8.5 Random Number Generator"
-	select HAVE_RANDOM
-	help
-	  This enables the hardware RNG functionality provided by the
-	  processor. The architecture specifies that this is implemented
-	  by a Deterministic Random Bit Generator (DRBG) that is seeded
-	  from a TRNG.
-
-endmenu
-
-menu "Armv9-A Extensions"
-	depends on MCPU_ARM64_NONE
-
-config ARM64_FEAT_RME
-	bool "Armv9 Realm Management Extension"
-	help
-	  Enable the support for Confidential Computing Architecture.
-endmenu
-
-menu "Armv9-A Extensions"
-	depends on MCPU_ARM64_NONE
-
-config ARM64_FEAT_RME
-	bool "Armv9 Realm Management Extension"
-	help
-	  Enable the support for Confidential Computing Architecture.
 endmenu
 
 config HAVE_ARM64_FEAT_RNG

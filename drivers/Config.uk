@@ -1,4 +1,4 @@
-if ARM64_FEAT_RME
+if ARCH_ARM_64
 menu "Arm CCA"
 
 source "$(shell,$(UK_BASE)/support/build/config-submenu.sh -q -o '$(KCONFIG_DIR)/drivers-arm_cca.uk' -r '$(KCONFIG_DRIV_BASE)/arm_cca' -l '$(KCONFIG_DRIV_BASE)/arm_cca' -e '$(KCONFIG_EXCLUDEDIRS)')"

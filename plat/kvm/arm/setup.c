@@ -33,9 +33,6 @@
 #include <uk/intctlr.h>
 #include <uk/arch/limits.h>
 #include <uk/arch/util.h>
-#if CONFIG_LIBUKRSI
-#include <uk/rsi.h>
-#endif /* CONFIG_LIBUKRSI */
 
 #if CONFIG_ENFORCE_W_XOR_X && CONFIG_LIBUKPAGING
 #include <uk/plat/common/w_xor_x.h>
@@ -48,6 +45,10 @@
 #ifdef CONFIG_HAVE_MEMTAG
 #include <uk/arch/memtag.h>
 #endif /* CONFIG_HAVE_MEMTAG */
+
+#if CONFIG_LIBUKARM_CCA_GUEST
+#include <uk/arm_cca_guest.h>
+#endif /* CONFIG_LIBUKARM_CCA_GUEST */
 
 /* At this point we expect that the C runtime is configured and that
  * bootcode has enabled all CPU features used by compiled code.
@@ -64,11 +65,14 @@ void __no_pauth _ukplat_entry(void)
 
 	uk_boot_early_init(bi);
 
-#if CONFIG_LIBUKRSI
-	rc = uk_rsi_init_memory();
+#if CONFIG_LIBUKARM_CCA_GUEST
+	/* This is our first opportunity to print anything */
+	uk_pr_info("Realm unprotected mask 0x%lx\n", uk_rsi_unprotected_mask);
+
+	rc = arm_cca_init_memory();
 	if (unlikely(rc))
 		UK_CRASH("Could not initialize memory for CCA\n");
-#endif /* CONFIG_LIBUKRSI */
+#endif /* CONFIG_LIBUKARM_CCA_GUEST */
 
 	/* Allocate boot stack */
 	bstack = ukplat_memregion_alloc(__STACK_SIZE, UKPLAT_MEMRT_STACK,
