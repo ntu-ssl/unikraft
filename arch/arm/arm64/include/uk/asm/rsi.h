@@ -21,15 +21,17 @@
 /**
  * RsiCommandReturnCode type
  */
-#define RSI_SUCCESS		0x0
-#define RSI_ERROR_INPUT	0x1
-#define RSI_ERROR_STATE	0x2
-#define RSI_INCOMPLETE	0x3
+#define RSI_SUCCESS			0x0
+#define RSI_ERROR_INPUT		0x1
+#define RSI_ERROR_STATE		0x2
+#define RSI_INCOMPLETE		0x3
+#define RSI_ERROR_UNKNOWN	0x4
 
-/* RIPAS values */
+/* RsiRipas type */
 #define RSI_RIPAS_EMPTY		0x0
 #define RSI_RIPAS_RAM		0x1
 #define RSI_RIPAS_DESTROYED	0x2
+#define RSI_RIPAS_DEV		0x3
 
 /* Version shift */
 #define RSI_VERSION_MAJOR_SHIFT	16
@@ -40,5 +42,8 @@
 /* RsiResponse type */
 #define RSI_ACCEPT 0
 #define RSI_REJECT 1
+
+/* RsiRipasChangeFlags */
+#define RSI_RIPAS_CHANGE_DESTROYED 1
 
 #endif /* __UKARCH_RSI_H__ */
