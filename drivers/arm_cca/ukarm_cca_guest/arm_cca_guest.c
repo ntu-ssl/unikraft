@@ -59,7 +59,9 @@ int arm_cca_early_map_unprotected(__u64 base, __sz size)
 
 	ttbr0 = (unsigned long)ukarch_pt_read_base();
 
-	for (pg_addr = base; pg_addr < end; pg_addr += PAGE_SIZE) {
+	pg_addr = base;
+
+	while (pg_addr < end) {
 		tbl_base = ttbr0;
 		lvl = PT_LEVELS - 1;
 
@@ -74,17 +76,22 @@ int arm_cca_early_map_unprotected(__u64 base, __sz size)
 			if (PAGE_Lx_IS(pte, lvl))
 				break;
 
-			/* Extract address from upper bits of PTE */
-			tbl_base = pte & ~0xFFFULL;
+			/* Get address of next level */
+			tbl_base = PT_Lx_PTE_PADDR(pte, lvl);
 
 			lvl--;
 		}
+
+		// Function should only be used on identity mappings
+		UK_ASSERT(PT_Lx_PTE_PADDR(pte, lvl) == pg_addr);
 
 		rc = ukarch_pte_write(tbl_base, lvl, idx,
 				      pte | PTE_RME_UNPROTECTED_BIT);
 
 		if (unlikely(rc))
 			return rc;
+
+		pg_addr += PAGE_Lx_SIZE(lvl);
 	}
 
 	return 0;
