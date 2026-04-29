@@ -5,6 +5,8 @@ Changes are on other branches.
 ## Arm CCA
 Branch `arm-cca` contains Arm CCA support for Unikraft.
 
+Writeup: [NTU SSLab Unikraft CCA features.md](https://gist.github.com/brhiggins-gh/e3c8bd98ccf283152289ea740ebab10a)
+
 Current features:
 - `libukrsi` for basic RSI interface
 - `liukarm_cca_guest` for CCA guest features
