@@ -33,10 +33,7 @@
  */
 
 #include <uk/arm_cca_guest.h>
-#include <uk/rsi.h>
 #include <uk/plat/common/bootinfo.h>
-#include <uk/plat/io.h>
-#include <uk/plat/paging.h>
 
 int arm_cca_early_map_unprotected(__u64 base, __sz size)
 {
@@ -52,46 +49,46 @@ int arm_cca_early_map_unprotected(__u64 base, __sz size)
 	/* Base address is both virt and phys, as this should only be called
 	 * during early boot with identity page tables. */
 
-	UK_ASSERT(PAGE_ALIGNED(base));
-	UK_ASSERT(PAGE_ALIGNED(size));
+	UK_ASSERT(UK_PAGING_PAGE_ALIGNED(base));
+	UK_ASSERT(UK_PAGING_PAGE_ALIGNED(size));
 
 	end = base + size;
 
-	ttbr0 = (unsigned long)ukarch_pt_read_base();
+	ttbr0 = (unsigned long)uk_paging_pt_read_base();
 
 	pg_addr = base;
 
 	while (pg_addr < end) {
 		tbl_base = ttbr0;
-		lvl = PT_LEVELS - 1;
+		lvl = UK_PAGING_PT_LEVELS - 1;
 
 		/* Walk the page table */
 		while (1) {
-			idx = PT_Lx_IDX(pg_addr, lvl);
-			rc = ukarch_pte_read(tbl_base, lvl, idx, &pte);
+			idx = UK_PAGING_PT_Lx_IDX(pg_addr, lvl);
+			rc = uk_paging_pte_read(tbl_base, lvl, idx, &pte);
 			if (unlikely(rc))
 				return rc;
 
 			/* Exit if this is a leaf */
-			if (PAGE_Lx_IS(pte, lvl))
+			if (UK_PAGING_PAGE_Lx_IS(pte, lvl))
 				break;
 
 			/* Get address of next level */
-			tbl_base = PT_Lx_PTE_PADDR(pte, lvl);
+			tbl_base = UK_PAGING_PT_Lx_PTE_PADDR(pte, lvl);
 
 			lvl--;
 		}
 
 		// Function should only be used on identity mappings
-		UK_ASSERT(PT_Lx_PTE_PADDR(pte, lvl) == pg_addr);
+		UK_ASSERT(UK_PAGING_PT_Lx_PTE_PADDR(pte, lvl) == pg_addr);
 
-		rc = ukarch_pte_write(tbl_base, lvl, idx,
-				      pte | PTE_RME_UNPROTECTED_BIT);
+		rc = uk_paging_pte_write(tbl_base, lvl, idx,
+					 pte | PTE_RME_UNPROTECTED_BIT);
 
 		if (unlikely(rc))
 			return rc;
 
-		pg_addr += PAGE_Lx_SIZE(lvl);
+		pg_addr += UK_PAGING_PAGE_Lx_SIZE(lvl);
 	}
 
 	return 0;
@@ -138,12 +135,13 @@ int arm_cca_map_unprotected_rw(__vaddr_t vaddr, __sz size)
 {
 	unsigned long pages, prot;
 
-	UK_ASSERT(PAGE_ALIGNED(vaddr));
-	UK_ASSERT(PAGE_ALIGNED(size));
+	UK_ASSERT(UK_PAGING_PAGE_ALIGNED(vaddr));
+	UK_ASSERT(UK_PAGING_PAGE_ALIGNED(size));
 
-	pages = size / PAGE_SIZE;
-	prot = PAGE_ATTR_PROT_RW | PAGE_ATTR_RME_UNPROTECTED;
+	pages = size / __PAGE_SIZE;
+	prot = UK_PAGING_PAGE_ATTR_PROT_RW |
+	       UK_PLAT_NATIVE_PAGE_ATTR_RME_UNPROTECTED;
 
-	return ukplat_page_set_attr(ukplat_pt_get_active(), vaddr, pages, prot,
-				    0);
+	return uk_paging_page_set_attr(uk_paging_pt_get_active(), vaddr, pages,
+				       prot, 0);
 }

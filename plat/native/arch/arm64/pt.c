@@ -13,6 +13,10 @@
 #include <uk/plat/native/page.h>
 #include <uk/plat/native/pt.h>
 
+#if CONFIG_LIBUKRSI
+#include <uk/rsi.h>
+#endif
+
 __pte_t uk_plat_native_pte_create(__paddr_t paddr, unsigned long attr,
 				  unsigned int level, __pte_t tmpl,
 				  unsigned int tmpl_level __unused)

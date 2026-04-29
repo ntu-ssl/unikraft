@@ -32,11 +32,10 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <arm/smccc.h>
+#include <uk/smccc.h>
 #include <uk/assert.h>
 #include <uk/essentials.h>
-#include <uk/arch/paging.h>
-#include <uk/plat/io.h>
+#include <uk/paging.h>
 #include <uk/rsi.h>
 #include <uk/test.h>
 
@@ -75,8 +74,8 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_attestation_token_continue_fail)
 
 	/* Test with not ATTEST_IN_PROGRESS */
 	size = GRANULE_SIZE;
-	ret = uk_rsi_attestation_token_continue(ukplat_virt_to_phys(buffer), 0,
-						size, &len);
+	ret = uk_rsi_attestation_token_continue(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer), 0, size, &len);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_STATE);
 
 	size = GRANULE_SIZE - 10;
@@ -84,23 +83,24 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_attestation_token_continue_fail)
 	ret = uk_rsi_attestation_token_init(challenge, &max_size);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	ret = uk_rsi_attestation_token_continue(
-	    ukplat_virt_to_phys(buffer) + 10, 10, size, &len);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + 10, 10, size, &len);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	size = GRANULE_SIZE;
 	/* Test with a non-page aligned address */
 	ret = uk_rsi_attestation_token_continue(
-	    ukplat_virt_to_phys(buffer) + 10, 0, size, &len);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + 10, 0, size, &len);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an out-of-bound address */
-	ret = uk_rsi_attestation_token_continue(ARM64_INVALID_ADDR, 0, size,
-						&len);
+	ret = uk_rsi_attestation_token_continue(UK_PLAT_NATIVE_PADDR_INV, 0,
+						size, &len);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with offset >= RMM_GRANULE_SIZE */
-	ret = uk_rsi_attestation_token_continue(ukplat_virt_to_phys(buffer),
-						GRANULE_SIZE + 10, size, &len);
+	ret = uk_rsi_attestation_token_continue(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer), GRANULE_SIZE + 10, size,
+	    &len);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 
@@ -117,8 +117,8 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_attestation)
 	memset(challenge, 0xAB, sizeof(challenge));
 
 	/* Get attestation in normal case */
-	ret = uk_rsi_generate_attestation_token(ukplat_virt_to_phys(buffer),
-						challenge, &size);
+	ret = uk_rsi_generate_attestation_token(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer), challenge, &size);
 
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_NOT_ZERO(size);
@@ -136,11 +136,12 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_hostcall_fail)
 	unsigned long ret;
 
 	/* Test with a not-aligned address */
-	ret = uk_rsi_host_call(ukplat_virt_to_phys(&host_call_data) + 10);
+	ret = uk_rsi_host_call(
+	    uk_paging_virt_to_phys((__vaddr_t)&host_call_data) + 10);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an out-of-bound address */
-	ret = uk_rsi_host_call(ARM64_INVALID_ADDR);
+	ret = uk_rsi_host_call(UK_PLAT_NATIVE_PADDR_INV);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 
@@ -155,7 +156,8 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_hostcall)
 	/* Test with normal host call */
 	host_call_data.gprs[0] = SMCCC_FID_SMCCC_VERSION;
 
-	ret = uk_rsi_host_call(ukplat_virt_to_phys(&host_call_data));
+	ret = uk_rsi_host_call(
+	    uk_paging_virt_to_phys((__vaddr_t)&host_call_data));
 
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(host_call_data.gprs[0], SMCCC_VERSION_1_1);
@@ -163,7 +165,8 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_hostcall)
 	/* Test with unsupported host call */
 	host_call_data.gprs[0] = FID_INVALID;
 
-	ret = uk_rsi_host_call(ukplat_virt_to_phys(&host_call_data));
+	ret = uk_rsi_host_call(
+	    uk_paging_virt_to_phys((__vaddr_t)&host_call_data));
 
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(host_call_data.gprs[0], SMCCC_NOT_SUPPORTED);
@@ -181,27 +184,30 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_ripas_get_fail)
 	unsigned char ripas;
 
 	/* Test with a not-aligned base address */
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(&buffer) + 10,
-				   ukplat_virt_to_phys(&buffer) + GRANULE_SIZE,
-				   &out_top, &ripas);
+	ret = uk_rsi_ipa_state_get(
+	    uk_paging_virt_to_phys((__vaddr_t)&buffer) + 10,
+	    uk_paging_virt_to_phys((__vaddr_t)&buffer) + GRANULE_SIZE, &out_top,
+	    &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with a not-aligned top address */
-	ret = uk_rsi_ipa_state_get(
-	    ukplat_virt_to_phys(&buffer),
-	    ukplat_virt_to_phys(&buffer) + GRANULE_SIZE + 10, &out_top, &ripas);
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)&buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)&buffer) +
+				       GRANULE_SIZE + 10,
+				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid size */
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(&buffer),
-				   ukplat_virt_to_phys(&buffer) - GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)&buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)&buffer) -
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an out-of-bound address */
-	ret = uk_rsi_ipa_state_get(ARM64_INVALID_ADDR,
-				   ARM64_INVALID_ADDR + GRANULE_SIZE, &out_top,
-				   &ripas);
+	ret = uk_rsi_ipa_state_get(UK_PLAT_NATIVE_PADDR_INV,
+				   UK_PLAT_NATIVE_PADDR_INV + GRANULE_SIZE,
+				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 
@@ -216,35 +222,37 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_ripas_set_fail)
 	__u8 resp;
 
 	/* Test with a not-aligned base address */
-	ret = uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer) + 10,
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
-				   RSI_RIPAS_RAM, 0, &new_base, &resp);
+	ret = uk_rsi_ipa_state_set(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + 10,
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_RAM, 0, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with a not-aligned top address */
-	ret = uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE +
-				       10,
+	ret = uk_rsi_ipa_state_set(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE + 10,
 				   RSI_RIPAS_RAM, 0, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid size */
-	ret = uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) - GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_set(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) -
+				       GRANULE_SIZE,
 				   RSI_RIPAS_RAM, 0, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid address */
-	ret = uk_rsi_ipa_state_set(ARM64_INVALID_ADDR,
-				   ARM64_INVALID_ADDR + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_set(UK_PLAT_NATIVE_PADDR_INV,
+				   UK_PLAT_NATIVE_PADDR_INV + GRANULE_SIZE,
 				   RSI_RIPAS_RAM, 0, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid RIPAS */
-	ret =
-	    uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer),
-				 ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
-				 RSI_RIPAS_DESTROYED + 1, 0, &new_base, &resp);
+	ret = uk_rsi_ipa_state_set(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_DESTROYED + 1, 0, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 
@@ -258,33 +266,36 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_ripas_set_range_fail)
 
 	/* Test with a not-aligned base address */
 	ret = uk_rsi_ipa_state_set_range(
-	    ukplat_virt_to_phys(buffer) + 10,
-	    ukplat_virt_to_phys(buffer) + GRANULE_SIZE, RSI_RIPAS_RAM, 0);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + 10,
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_RAM, 0);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with a not-aligned top address */
 	ret = uk_rsi_ipa_state_set_range(
-	    ukplat_virt_to_phys(buffer),
-	    ukplat_virt_to_phys(buffer) + GRANULE_SIZE + 10, RSI_RIPAS_RAM, 0);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE + 10,
+	    RSI_RIPAS_RAM, 0);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid size */
 	ret = uk_rsi_ipa_state_set_range(
-	    ukplat_virt_to_phys(buffer),
-	    ukplat_virt_to_phys(buffer) - GRANULE_SIZE, RSI_RIPAS_RAM, 0);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) - GRANULE_SIZE,
+	    RSI_RIPAS_RAM, 0);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid address */
-	ret = uk_rsi_ipa_state_set_range(ARM64_INVALID_ADDR,
-					 ARM64_INVALID_ADDR + GRANULE_SIZE,
-					 RSI_RIPAS_RAM, 0);
+	ret = uk_rsi_ipa_state_set_range(
+	    UK_PLAT_NATIVE_PADDR_INV, UK_PLAT_NATIVE_VADDR_INV + GRANULE_SIZE,
+	    RSI_RIPAS_RAM, 0);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an invalid RIPAS */
-	ret = uk_rsi_ipa_state_set_range(ukplat_virt_to_phys(buffer),
-					 ukplat_virt_to_phys(buffer) +
-					     GRANULE_SIZE,
-					 RSI_RIPAS_DESTROYED + 1, 0);
+	ret = uk_rsi_ipa_state_set_range(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_DESTROYED + 1, 0);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 
@@ -300,33 +311,36 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_ripas_set_get)
 	__u8 resp;
 
 	/* test ripas of the buffer */
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_RAM);
 
 	/* set ripas and then get */
-	ret = uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
-				   RSI_RIPAS_EMPTY, RSI_RIPAS_CHANGE_DESTROYED,
-				   &new_base, &resp);
+	ret = uk_rsi_ipa_state_set(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_EMPTY, RSI_RIPAS_CHANGE_DESTROYED, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_EMPTY);
 
-	ret = uk_rsi_ipa_state_set(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
-				   RSI_RIPAS_RAM, RSI_RIPAS_CHANGE_DESTROYED,
-				   &new_base, &resp);
+	ret = uk_rsi_ipa_state_set(
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_RAM, RSI_RIPAS_CHANGE_DESTROYED, &new_base, &resp);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_RAM);
@@ -343,33 +357,36 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_ripas_set_range_get)
 	unsigned char ripas;
 
 	/* test ripas of the buffer */
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_RAM);
 
 	/* set ripas and then get */
 	ret = uk_rsi_ipa_state_set_range(
-	    ukplat_virt_to_phys(buffer),
-	    ukplat_virt_to_phys(buffer) + GRANULE_SIZE, RSI_RIPAS_EMPTY,
-	    RSI_RIPAS_CHANGE_DESTROYED);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_EMPTY, RSI_RIPAS_CHANGE_DESTROYED);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_EMPTY);
 
 	ret = uk_rsi_ipa_state_set_range(
-	    ukplat_virt_to_phys(buffer),
-	    ukplat_virt_to_phys(buffer) + GRANULE_SIZE, RSI_RIPAS_RAM,
-	    RSI_RIPAS_CHANGE_DESTROYED);
+	    uk_paging_virt_to_phys((__vaddr_t)buffer),
+	    uk_paging_virt_to_phys((__vaddr_t)buffer) + GRANULE_SIZE,
+	    RSI_RIPAS_RAM, RSI_RIPAS_CHANGE_DESTROYED);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 
-	ret = uk_rsi_ipa_state_get(ukplat_virt_to_phys(buffer),
-				   ukplat_virt_to_phys(buffer) + GRANULE_SIZE,
+	ret = uk_rsi_ipa_state_get(uk_paging_virt_to_phys((__vaddr_t)buffer),
+				   uk_paging_virt_to_phys((__vaddr_t)buffer) +
+				       GRANULE_SIZE,
 				   &out_top, &ripas);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_SUCCESS);
 	UK_TEST_EXPECT_SNUM_EQ(ripas, RSI_RIPAS_RAM);
@@ -463,8 +480,8 @@ UK_TESTCASE(ukrsi_testsuite, ukrsi_test_rsi_realm_config_fail)
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 
 	/* Test with an out-of-bound address */
-	ret =
-	    uk_rsi_realm_config((struct rsi_realm_config *)ARM64_INVALID_ADDR);
+	ret = uk_rsi_realm_config(
+	    (struct rsi_realm_config *)UK_PLAT_NATIVE_PADDR_INV);
 	UK_TEST_EXPECT_SNUM_EQ(ret, RSI_ERROR_INPUT);
 }
 

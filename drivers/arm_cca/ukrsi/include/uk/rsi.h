@@ -37,8 +37,8 @@
 
 #include <stddef.h>
 #include <uk/asm/rsi.h>
-#include "uk/arch/types.h"
-#include "uk/essentials.h"
+#include <uk/arch/types.h>
+#include <uk/essentials.h>
 
 typedef __u64 rsi_return_t;
 typedef __u64 rsi_version_t;
