@@ -1,9 +1,8 @@
-comment "Arm CCA support requires PAGING"
-    depends on !PAGING
-
 config LIBUKRSI
 	bool "Realm Services Interface library"
 	depends on ARCH_ARM_64
+	depends on PLAT_KVM
+	depends on KVM_BOOT_PROTO_QEMU_VIRT
 	help
 		Realm Services Interface (RSI) support.
 

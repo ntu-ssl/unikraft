@@ -1,7 +1,7 @@
 config LIBUKARM_CCA_GUEST
 	bool "Arm CCA guest"
-	depends on LIBUKRSI
-	depends on PLAT_KVM
+	depends on ARCH_ARM_64
+	select LIBUKRSI
 	select LIBUKPAGING
 	help
 		Support for running in an Arm CCA realm.
